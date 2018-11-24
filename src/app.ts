@@ -1,4 +1,5 @@
-import express from 'express';
+import * as express from 'express';
+import * as helmet from 'helmet';
 import { Routes } from './routes';
 
 class App {
@@ -12,8 +13,9 @@ class App {
 	}
 
 	private config() {
-		this.app.set('port', process.env.PORT || 5000);
+		this.app.set('port', process.env.PORT || 4000);
 		this.app.use(express.json());
+		this.app.use(helmet());
 	}
 }
 
