@@ -15,6 +15,7 @@ class App {
 	private config() {
 		this.app.set('port', process.env.PORT || 4000);
 		this.app.use(express.json());
+		this.app.use(express.urlencoded({ extended: true }));
 		this.app.use(helmet());
 	}
 }
