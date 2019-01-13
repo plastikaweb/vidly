@@ -1,69 +1,71 @@
 import express = require('express');
 import { Request, Response, Router } from 'express';
 import * as Joi from 'joi';
-import { Genres } from '../data/genres';
-import { IRouterBySection } from '../models/';
+import { Genre, IGenre, IRouterBySection } from '../models';
 
 export class GenresRoutes implements IRouterBySection {
   public getRoutes(): Router {
-    const genres = new Genres();
     const router = express.Router();
     return router
-      .get('/', (req: Request, res: Response) => {
-        res.send(genres.getGenres());
+      .get('/', async (req: Request, res: Response) => {
+        const genres = await Genre.find().sort('name');
+        res.send(genres);
       })
-      .post('/', (req: Request, res: Response) => {
-        const newGenre = req.body;
-        const isInvalidGenre = this.isInvalidGenre(newGenre);
+      .post('/', async (req: Request, res: Response) => {
+        const name = req.body.name;
+        let genre = new Genre({ name });
+        const isInvalidGenre = this.isInvalidGenre(req.body);
         if (isInvalidGenre) {
           return res.status(400).send(isInvalidGenre);
         }
-        res.send(genres.addGenre(newGenre));
+        genre = await genre.save();
+        res.send(genre);
       })
 
-      .get('/:id', (req: Request, res: Response) => {
+      .get('/:id', async (req: Request, res: Response) => {
         const genreId = req.params.id;
-        const genre = genres.getGenre(genreId);
+        const genre = await Genre.findById(genreId);
         if (!genre) {
           return this.isNotPresentGenre(res, genreId);
         }
         res.send(genre);
       })
-      .put('/:id', (req: Request, res: Response) => {
+      .put('/:id', async (req: Request, res: Response) => {
         const genreId = req.params.id;
-        const genreToUpdate = req.body;
-        const genre = genres.getGenre(genreId);
-        if (!genre) {
-          return this.isNotPresentGenre(res, genreId);
-        }
-        const isInvalidGenre = this.isInvalidGenre(genreToUpdate);
+        const isInvalidGenre = this.isInvalidGenre(req.body);
         if (isInvalidGenre) {
           return res.status(400).send(isInvalidGenre);
         }
-        const updatedGenre = genres.updateGenre({
-          id: parseInt(genreId, 10),
-          ...genreToUpdate
-        });
-        res.send(updatedGenre);
-      })
-      .delete('/:id', (req: Request, res: Response) => {
-        const genreId = req.params.id;
-        const genre = genres.getGenre(genreId);
+
+        const genre = await Genre.findByIdAndUpdate(
+          genreId,
+          { name: req.body.name },
+          { new: true }
+        );
+
         if (!genre) {
           return this.isNotPresentGenre(res, genreId);
         }
-        genres.deleteGenre(genreId);
+        res.send(genre);
+      })
+      .delete('/:id', async (req: Request, res: Response) => {
+        const genreId = req.params.id;
+        const genre = await Genre.findByIdAndRemove(genreId);
+        if (!genre) {
+          return this.isNotPresentGenre(res, genreId);
+        }
         res.send(genre);
       });
   }
 
-  private isInvalidGenre(genreName: string): string | boolean {
+  private isInvalidGenre(name: IGenre): string | boolean {
     const schema = {
       name: Joi.string()
         .min(3)
+        .max(50)
         .required()
     };
-    const { error } = Joi.validate(genreName, schema);
+    const { error } = Joi.validate({ name }, schema);
     return error ? error.details[0].message : false;
   }
 
